@@ -1,0 +1,66 @@
+POINTERS TO FUNCTIONS:
+
+    Up to this point we have been discussing pointers to data objects. C also permits the declaration of pointers to functions. Pointers to functions have a variety of uses and some of them will be discussed here.
+
+    Consider the following real problem. You want to write a function that is capable of sorting virtually any collection of data that can be stored in an array. This might be an array of strings, or integers, or floats, or even structures. The sorting algorithm can be the same for all. For example, it could be a simple bubble sort algorithm, or the more complex shell or quick sort algorithm. We'll use a simple bubble sort for demonstration purposes.
+
+    Sedgewick [1] has described the bubble sort using C code by setting up a function which when passed a pointer to the array would sort it. If we call the function `bubble()`, a sort program is described by bubble_1.c, which follows:
+
+        // CODE: bubble_1.C
+    
+    The bubble sort is one of the simpler sorts. The algorithm scans the array from the second to the last element comparing each element with the one which precedes it. If the one that precedes it is larger than the current element, the two are swapped so the larger one is closer to the end of the array. On the first pass, this results in the largest element ending up at the end of the array. The array is now limited to all elements except the last and the process is repeated. This puts the next largest element at a point preceding the largest element. The process is repeated for a number of times equal to the number of elements minus 1. The end result is a sorted array.
+
+    Here our function is designed to sort an array of integers. Thus in line 1 we are comparing integers and in lines 2 through 4 we are using temporary integer storage to store integers. What we want to do now is see if we can convert this code so we can use any data type, i.e. not be restricted to integers.
+
+    At the same time we don't want to have to analyze our algorithm and the code associated with it each time we use it. We start by removing the comparison from within the function `bubble()` so as to make it relatively easy to modify the comparison function without having to re-write portions related to the actual algorithm. This results in bubble_2.c:
+
+        // CODE: bubble_2.C
+
+    If our goal is to make our sort of routine data type independent, one way of doing this is to use pointers to type void to point to the data instead of using the integer data type. As a start in that direaction let's modify a few times in the above so that pointers can be used. To begin with, we'll stick with pointer to type integer.
+
+        // CODE: bubble_3.C
+
+    Note the changes. We ar enow passing a pointer to an integer (or array of integers) to `bubble()`. And from within bubble we are passing pointers to the elements of the array that we want to compare to our comparison function. And, of course, we are dereferencing these pointers int our `compare()` function in order to make the actual comparison. Our next step will be to convert the pointers in `bubble()` to pointers to type void so that that function will become more type insensitive. This is show in bubble_4.
+
+        // CODE: bubble_4.C
+
+    Note that, in doing this, in `compare()` we had to introduce the casting of the void pointer types passed to the actual type being sorted. But, as we'll see later that's okay. And since what is being passed to `bubble()` is still a pointer to an array of integers, we had to cast these pointers to void pointers when we passed them as parameters in our call to `compare()`.
+
+    We now address the problem of what we pass to `bubble()`. We want to make the first parameter of that function a void pointer also. But, that means that within `bubble()` we need to do something about the variable `t`, which is currently an integer. Also, where we used `t = p[j-1]`; the type of `p[j-1]` needs to be known in order to know ho wmany bytes to copy to the variable `t` (or whatever we replace `t` with).
+
+    Currently, in bubble_4.c, knowledge within `bubble()` as to the type of the data being sorted (and hence the size of each individual element) is obtained from the fact that the first parameter is a pointer to type integer. If we are agoing to be able to use `bubble()` to sort any type of data, we need to make that pointer a pointer to type `void`. But, in doing so we are going to loser information concerning the size of individual elements in the array. So, in bubble_5.c we will add a separate parameter to handle this size information.
+
+    These changes, form bubble4.c to bubble5.c are, perhaps, a bit more extensive than those we have made in the past. So, compare the two modules carefully for differences.
+
+        // CODE: bubble_5.c
+
+    Note that I have changed the data type of the array from `int` to `long` to illustrate the changes needed in the `compare()` function. Within `bubble()` I've done away with the variable `t` (which we would have had to change from type `int` to type `long`). I have added a buffer of size 4 unsigned characters, which is the size needed to hold a long (this will change again in future modifications to this code). THe unsigned character pointer `*bp` is used to point to the base of the array to be sorted, i.e. to the first element of that array.
+
+    We also had to modify what we passed to `compare()`, and how we do the swapping of elements that the comparison indicates need swapping. Use of `memcpy()` and pointer notation instead of array notation work towards this reduction in type sensitivity.
+
+    Again, maing a careful comaprison of bubble_5.c with bubble_4.c can result in improved understanding of what is happeneing and why.
+
+    We move now to bubble_6.c where we use the same function bubble() that we used in bubble_5.c to sort strings instead of long integers. Of course we have to change the comparison function since the means by which strings are compared is different from that by which long integers are compared. And, in bubble_6.c, we have deleted the lines within `bubble()` that were commented out in bubble_5.C
+
+        // CODE: bubble_6.c
+
+    But, the fact that `bubble()` was unchanged from that used in bubble_5.c indicates that that function is capable of sorting a wide variety of data types. What is left to do is to pass to `bubble()` the name of the comparison function we want to use so that it can be truly universal. Just as the naem of an array is the address of the first element of the array in the data segment, the name of a function decays into the address of that function in the code segment. Thus we need to use a pointer to a function. In this case the comparison function.
+
+    Pointers to functions must match the functions pointed to in the number and types of the parameters and the type of the return value. In our case, we declared our function pointer as:
+
+        int (*fptr)(const void *p1, const void *p2);
+
+    Note that were we to write:
+
+        int *fptr(const void *p1, const void *p2);
+
+    we would have a function prototype for a function which returned a pointer to type `int`. That is because in C the parenthesis () operator have a higher precedence than the pointer * operator. By putting the parenthesis around the string (*fptr) we indicate that we are declaring a function pointer.
+
+    We now modify our declaration of `bubble()` by adding, as its 4th parameter, a function pointer of the proper type. Its function prototype becomes:
+
+        void bubble(void *p, int width, int N, 
+                    int(*fptr)(const void *, const void *));
+
+    When we call the `bubble()`, we insert the name of the comparison function that we want to use. bubble_7.c ilustrate how this approach permits the use of the same `bubble()` function for sorting different types of data.
+
+        // CODE: bubble_7.c
